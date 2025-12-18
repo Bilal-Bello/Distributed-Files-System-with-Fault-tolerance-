@@ -1,1 +1,106 @@
 # Distributed-Files-System-with-Fault-tolerance-
+<!DOCTYPE html>
+<html>
+<head>
+<title>Distributed File System</title>
+<style>
+body{
+  background:linear-gradient(120deg,#667eea,#764ba2);
+  font-family:Arial;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  height:100vh;
+}
+.container{
+  background:white;
+  padding:30px;
+  width:420px;
+  border-radius:15px;
+  box-shadow:0 20px 40px rgba(0,0,0,0.2);
+  text-align:center;
+}
+button{
+  width:100%;
+  padding:10px;
+  background:#5a67d8;
+  color:white;
+  border:none;
+  border-radius:8px;
+  cursor:pointer;
+}
+button:hover{background:#434190}
+li{
+  list-style:none;
+  margin:10px;
+  background:#f1f5f9;
+  padding:10px;
+  border-radius:8px;
+  display:flex;
+  justify-content:space-between;
+}
+</style>
+</head>
+
+<body>
+<div class="container">
+<h2>Distributed File System</h2>
+
+<input type="file" id="fileInput"><br><br>
+<button onclick="upload()">Upload</button>
+
+<h3>Files</h3>
+<ul id="files"></ul>
+</div>
+
+<script>
+const META="http://localhost:5000";
+
+function upload(){
+ let f=document.getElementById("fileInput").files[0];
+ let form=new FormData();
+ form.append("file",f);
+
+ fetch(META+"/upload",{method:"POST",body:form})
+ .then(r=>r.json())
+ .then(m=>{
+   m.servers.forEach(s=>{
+     fetch(s+"/store/"+m.chunk_id,{method:"POST",body:f});
+   });
+   loadFiles();
+ });
+}
+
+function loadFiles(){
+ fetch(META+"/files")
+ .then(r=>r.json())
+ .then(fs=>{
+   let ul=document.getElementById("files");
+   ul.innerHTML="";
+   fs.forEach(f=>{
+     let li=document.createElement("li");
+     li.innerHTML=`${f}<button onclick="download('${f}')">Download</button>`;
+     ul.appendChild(li);
+   });
+ });
+}
+
+function download(name){
+ fetch(META+"/download/"+name)
+ .then(r=>r.json())
+ .then(m=>{
+   fetch(m.servers[0]+"/read/"+m.chunk_id)
+   .then(r=>r.ok?r.blob():fetch(m.servers[1]+"/read/"+m.chunk_id).then(x=>x.blob()))
+   .then(b=>{
+     let a=document.createElement("a");
+     a.href=URL.createObjectURL(b);
+     a.download=name;
+     a.click();
+   });
+ });
+}
+
+loadFiles();
+</script>
+</body>
+</html>
